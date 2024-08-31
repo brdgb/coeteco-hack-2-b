@@ -157,51 +157,6 @@ app.use(express.static("./public"));
 // リクエストボディを JSON として解釈して request.body に格納する
 app.use(express.json());
 
-app.post("/chat", async (request, response) => {
-  // システムプロンプト
-  const promptText = request?.body?.promptText;
-  state.setState({
-    latitude: request.body.latitude,
-    longitude: request.body.longitude,
-  });
-  const systemPromptText = `あなたは飲食店を提案するアシスタントです。ユーザーにおすすめの飲食店を提案してください。getRestaurant関数を1回だけ呼び出して飲食店の情報を得てください。関数を2回以上呼び出さないでください。現在は${new Date().toString()}なので、現在営業しているお店を提案してください。そのあと、その中から最もユーザーに適していると思われる店の情報をjson形式で3つ出力してください。飲食店の情報は必ず関数の出力結果に基づいてください。[${RESPONSE_FORMAT}]のフォーマットで回答してください。このフォーマットは厳密に守ってください。これ以外の言葉をつけないでください`;
-  // クライアントから送られてきたデータは無条件で信用しない
-  if (typeof promptText !== "string") {
-    response.sendStatus(400);
-    return;
-  }
-
-  const messages = [
-    new SystemMessage(systemPromptText),
-    new HumanMessage(promptText),
-  ];
-  const aiMessageChunk = await chatModelWithTools.invoke(messages);
-  messages.push(aiMessageChunk);
-  // function calling
-  if (
-    messages[messages.length - 1].response_metadata.finish_reason ===
-    "tool_calls"
-  ) {
-    // 関数を実行
-    const tool_calls = messages[messages.length - 1].tool_calls;
-    for (const toolCall of tool_calls) {
-      const selectedTool = toolsByName[toolCall.name];
-      const toolMessage = await selectedTool.invoke(toolCall);
-      // 実行結果をmessagesにのせる
-      messages.push(toolMessage);
-    }
-    // 関数の実行結果をもとに最終的な返答を得る
-    const aiMessageChunkAfterToolCall = await chatModelWithTools.invoke(
-      messages,
-    );
-    messages.push(aiMessageChunkAfterToolCall);
-  }
-  // debug
-  // console.log(state.getState());
-  console.log(messages);
-  response.json({ content: messages[messages.length - 1].content });
-});
-
 // 使用するホスティングサービス (Render など) によってはリクエストを受け付けるポートが指定されている場合がある。
 // たいていの場合は PORT という名前の環境変数を通して参照できる。
 app.listen(process.env.PORT || 3000);
