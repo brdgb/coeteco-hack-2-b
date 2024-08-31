@@ -1,8 +1,16 @@
 import { z } from "zod";
+import "cheerio";
 import express from "express";
-import { ChatOpenAI } from "@langchain/openai";
+import { OpenAIEmbeddings, ChatOpenAI } from "@langchain/openai";
 import { tool } from "@langchain/core/tools";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
+import { CheerioWebBaseLoader } from "@langchain/community/document_loaders/web/cheerio";
+import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
+import { MemoryVectorStore } from "langchain/vectorstores/memory";
+import { PromptTemplate } from "@langchain/core/prompts";
+import { StringOutputParser } from "@langchain/core/output_parsers";
+
+import { createStuffDocumentsChain } from "langchain/chains/combine_documents";
 
 // 定数
 const COUNT = 50;
@@ -37,6 +45,46 @@ RESPONSE_FORMAT += OTHER_COLUMNS.map(
   (columnName) => `${columnName}: restaurant ${columnName}`,
 ).join(", ");
 RESPONSE_FORMAT += "}";
+
+// function
+async function summarizeWebPage(url) {
+  const loader = new CheerioWebBaseLoader(url);
+
+  const docs = await loader.load();
+
+  const textSplitter = new RecursiveCharacterTextSplitter({
+    chunkSize: 1000,
+    chunkOverlap: 200,
+  });
+  const splits = await textSplitter.splitDocuments(docs);
+  const vectorStore = await MemoryVectorStore.fromDocuments(
+    splits,
+    new OpenAIEmbeddings(),
+  );
+
+  // Retrieve and generate using the relevant snippets of the blog.
+  const retriever = vectorStore.asRetriever();
+  const prompt = PromptTemplate.fromTemplate(
+    "Use the following pieces of context to answer the question at the end. {context} Question: {question} Answer: ",
+  );
+  const llm = new ChatOpenAI({ model: "gpt-3.5-turbo", temperature: 0 });
+
+  const ragChain = await createStuffDocumentsChain({
+    llm,
+    prompt,
+    outputParser: new StringOutputParser(),
+  });
+
+  const retrievedDocs = await retriever.invoke(
+    "この店の特徴について日本語で30文字で答えてください。タブ文字や改行文字は含めないでください",
+  );
+  const result = await ragChain.invoke({
+    question:
+      "この店の特徴について日本語で30文字で答えてください。タブ文字や改行文字は含めないでください",
+    context: retrievedDocs,
+  });
+  return result;
+}
 
 // 状態
 function createState() {
@@ -74,21 +122,29 @@ const restaurantTool = tool(
     // 店の情報のみを取り出す
     const restaurantArray = restaurantJson.results.shop;
     // 使う情報を取り出す
-    const restaurantText = restaurantArray.map((arr) => {
-      let resultText = "";
-      // COLUMNSにあるカラム名を追加
-      for (const columnName of COLUMNS) {
-        resultText += `${columnName}: ${arr[`${columnName}`]}, `;
-      }
-      // その他を手動で追加
-      resultText += `genre_name: ${arr.genre.name}`;
-      resultText += `photo: ${arr.photo.pc.m}`;
-      resultText += `budget: ${arr.budget.name}`;
-      resultText += `url: ${arr.urls.pc}`;
-      return resultText;
+    const restaurantFeatures = restaurantArray.map((arr) => {
+      return summarizeWebPage(arr.urls.pc);
     });
-    // console.log(restaurantText);
-    return restaurantText;
+    const restaurantTexts = await Promise.all(restaurantFeatures).then((values) => {
+      const restaurantText = restaurantArray.map((arr, i) => {
+        let resultText = "";
+        // COLUMNSにあるカラム名を追加
+        for (const columnName of COLUMNS) {
+          resultText += `${columnName}: ${arr[`${columnName}`]}, `;
+        }
+        // その他を手動で追加
+        resultText += `genre_name: ${arr.genre.name}`;
+        resultText += `photo: ${arr.photo.pc.m}`;
+        resultText += `budget: ${arr.budget.name}`;
+        resultText += `url: ${arr.urls.pc}`;
+        resultText += `feature: ${values[i]}`;
+
+        return resultText;
+      });
+      // console.log(restaurantText);
+      return restaurantText;
+    });
+    return restaurantTexts.join(',')
   },
   {
     name: "getRestaurant",
@@ -189,6 +245,7 @@ app.post("/chat", async (request, response) => {
       const toolMessage = await selectedTool.invoke(toolCall);
       // 実行結果をmessagesにのせる
       messages.push(toolMessage);
+      console.log(messages);
     }
     // 関数の実行結果をもとに最終的な返答を得る
     const aiMessageChunkAfterToolCall = await chatModelWithTools.invoke(
@@ -198,7 +255,6 @@ app.post("/chat", async (request, response) => {
   }
   // debug
   // console.log(state.getState());
-  console.log(messages);
   response.json({ content: messages[messages.length - 1].content });
 });
 
