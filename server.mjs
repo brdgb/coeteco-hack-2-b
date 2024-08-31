@@ -5,12 +5,18 @@ import { tool } from "@langchain/core/tools";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 
 // 定数
-const COUNT = 100;
-const COLUMNS = ['name','catch']
-const OTHER_COLUMNS = ['genre_name', 'photo']
-let RESPONSE_FORMAT = '{'+COLUMNS.map((columnName)=>`${columnName}: restaurant ${columnName}`).join(', ')
-RESPONSE_FORMAT += OTHER_COLUMNS.map((columnName)=>`${columnName}: restaurant ${columnName}`).join(', ')
-RESPONSE_FORMAT += '}'
+const COUNT = 50;
+const COLUMNS = ["name", "catch", "open"];
+const OTHER_COLUMNS = ["genre_name", "photo"];
+let RESPONSE_FORMAT =
+  "{" +
+  COLUMNS.map((columnName) => `${columnName}: restaurant ${columnName}`).join(
+    ", ",
+  );
+RESPONSE_FORMAT += OTHER_COLUMNS.map(
+  (columnName) => `${columnName}: restaurant ${columnName}`,
+).join(", ");
+RESPONSE_FORMAT += "}";
 
 // 状態
 function createState() {
@@ -26,49 +32,6 @@ function createState() {
 const state = createState();
 
 // toolを定義
-const addTool = tool(
-  async ({ a, b }) => {
-    return a + b;
-  },
-  {
-    name: "add",
-    schema: z.object({
-      a: z.number(),
-      b: z.number(),
-    }),
-    description: "Adds a and b.",
-  },
-);
-
-const multiplyTool = tool(
-  async ({ a, b }) => {
-    return a * b;
-  },
-  {
-    name: "multiply",
-    schema: z.object({
-      a: z.number(),
-      b: z.number(),
-    }),
-    description: "Multiplies a and b.",
-  },
-);
-
-const forecastTool = tool(
-  async () => {
-    const forecast = await fetch(
-      "https://www.jma.go.jp/bosai/forecast/data/overview_forecast/130000.json",
-    );
-    const forecastJson = await forecast.json();
-    const forecastText = forecastJson.text;
-    return await forecastText;
-  },
-  {
-    name: "getForecast",
-    description: "東京都の天気予報を取得します",
-  },
-);
-
 const restaurantTool = tool(
   async () => {
     const currentState = state.getState();
@@ -81,32 +44,30 @@ const restaurantTool = tool(
     // 店の情報のみを取り出す
     const restaurantArray = restaurantJson.results.shop;
     // 使う情報を取り出す
-    const restaurantText = restaurantArray.map((arr)=>{
-      let resultText = '';
+    const restaurantText = restaurantArray.map((arr) => {
+      let resultText = "";
       // COLUMNSにあるカラム名を追加
-      for(const columnName of COLUMNS){
-        resultText += `${columnName}: ${arr[`${columnName}`]}, `
+      for (const columnName of COLUMNS) {
+        resultText += `${columnName}: ${arr[`${columnName}`]}, `;
       }
       // その他を手動で追加
-      resultText += `genre_name: ${arr.genre.name}`
-      resultText += `photo: ${arr.photo.pc.m}`
-      return resultText
-    })
+      resultText += `genre_name: ${arr.genre.name}`;
+      resultText += `photo: ${arr.photo.pc.m}`;
+      return resultText;
+    });
     // console.log(restaurantText);
     return restaurantText;
   },
   {
     name: "getRestaurant",
-    description: "ユーザーの周辺の飲食店を取得します。引数は入れないでください。",
+    description:
+      "ユーザーの周辺の飲食店を取得します。引数は入れないでください。",
   },
 );
 
-const tools = [addTool, multiplyTool, forecastTool, restaurantTool];
+const tools = [restaurantTool];
 
 const toolsByName = {
-  add: addTool,
-  multiply: multiplyTool,
-  getForecast: forecastTool,
   getRestaurant: restaurantTool,
 };
 
@@ -129,7 +90,7 @@ app.post("/chat", async (request, response) => {
     latitude: request.body.latitude,
     longitude: request.body.longitude,
   });
-  const systemPromptText = `あなたは飲食店を提案するアシスタントです。ユーザーにおすすめの飲食店を提案してください。getRestaurant関数を1回だけ呼び出して飲食店の情報を得てください。getRestaurant関数は一度だけ呼び出してください。そのあと、その中から最もユーザーに適していると思われる店の情報をjson形式で3つ出力してください。[${RESPONSE_FORMAT}]のフォーマットで回答してください。`;
+  const systemPromptText = `あなたは飲食店を提案するアシスタントです。ユーザーにおすすめの飲食店を提案してください。getRestaurant関数を1回だけ呼び出して飲食店の情報を得てください。関数を2回以上呼び出さないでください。現在は${new Date().toString()}なので、現在営業しているお店を提案してください。そのあと、その中から最もユーザーに適していると思われる店の情報をjson形式で3つ出力してください。[${RESPONSE_FORMAT}]のフォーマットで回答してください。このフォーマットは必ず守ってください。`;
   // クライアントから送られてきたデータは無条件で信用しない
   if (typeof promptText !== "string") {
     response.sendStatus(400);
@@ -148,7 +109,7 @@ app.post("/chat", async (request, response) => {
     "tool_calls"
   ) {
     // 関数を実行
-    const tool_calls = messages[messages.length - 1].tool_calls
+    const tool_calls = messages[messages.length - 1].tool_calls;
     for (const toolCall of tool_calls) {
       const selectedTool = toolsByName[toolCall.name];
       const toolMessage = await selectedTool.invoke(toolCall);
