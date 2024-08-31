@@ -27,7 +27,7 @@ const GENRE_LIST = {
   その他グルメ: "G015",
 };
 const COLUMNS = ["name", "catch", "open"];
-const OTHER_COLUMNS = ["genre_name", "photo", "budget"];
+const OTHER_COLUMNS = ["genre_name", "photo", "budget", "url"];
 let RESPONSE_FORMAT =
   "{" +
   COLUMNS.map((columnName) => `${columnName}: restaurant ${columnName}`).join(
@@ -84,6 +84,7 @@ const restaurantTool = tool(
       resultText += `genre_name: ${arr.genre.name}`;
       resultText += `photo: ${arr.photo.pc.m}`;
       resultText += `budget: ${arr.budget.name}`;
+      resultText += `url: ${arr.urls.pc}`;
       return resultText;
     });
     // console.log(restaurantText);
