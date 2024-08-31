@@ -21,11 +21,14 @@ function showDialog(recommendedRestaurantList) {
   const dialog = document.getElementById("restaurantDialog");
   const closeButton = document.getElementById("closeDialog");
 
-  document.getElementById("restaurantImage").src = restaurantData.photo;
+  document.getElementById("restaurantImage").src = restaurantData.image_url;
   document.getElementById("restaurantName").textContent = restaurantData.name;
-  document.getElementById("restaurantGenre").textContent = "ジャンル: " + restaurantData.genre_name;
+  document.getElementById("restaurantGenre").textContent = "ジャンル: " + restaurantData.genre;
   document.getElementById("restaurantBudget").textContent = "予算: " + restaurantData.budget;
-  document.getElementById("restaurantTime").textContent = "所要時間: " + restaurantData.time;
+  document.getElementById("restaurantDistance").textContent = "距離: " + restaurantData.distance +"m";
+  document.getElementById("restaurantCongestion").textContent = "混雑率: " + restaurantData.congestion;
+  document.getElementById("restaurantStar").textContent = "満足度: " + restaurantData.star;
+  document.getElementById("restaurantRecommendReason").textContent = "AI押しポイント:" + restaurantData.recommend_reason;
   dialog.showModal();
 
   document.getElementById("yes-button").onclick = () => {
@@ -44,15 +47,6 @@ function showDialog(recommendedRestaurantList) {
   openInNewTab(restaurantData.url)
   }
 
-  document.getElementById("no-button").onclick = () => {
-    currentIndex++;
-    if (currentIndex <= recommendedRestaurantList.length - 1) {
-      
-      showDialog(recommendedRestaurantList);
-    } else {
-      location.reload();
-    }
-  }
 
 
   // ダイアログを閉じる
