@@ -47,6 +47,20 @@ function showDialog(recommendedRestaurantList) {
   openInNewTab(restaurantData.url)
   }
 
+  document.getElementById("googleMap").onclick = () => {
+    function openGoogleMapsRoute(lat1, lon1, lat2, lon2) {
+      const url = `https://www.google.com/maps/dir/?api=1&origin=${lat1},${lon1}&destination=${lat2},${lon2}&travelmode=driving`;
+      window.open(url, '_blank');
+    }
+    
+    const startLat = 35.657655; // 出発地点の緯度
+    const startLon = 139.700311; // 出発地点の経度 (東京)
+    const endLat = restaurantData.latitude; // 到着地点の緯度
+    const endLon = restaurantData.longitude; // 到着地点の経度 (六本木)
+    openGoogleMapsRoute(startLat, startLon, endLat, endLon);
+    
+  }
+
 
 
   // ダイアログを閉じる
