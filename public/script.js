@@ -123,7 +123,19 @@ function addChatMessageElement(author, chatMessage, recommendedRestaurantList) {
     dialog.showModal();
 
     document.getElementById("yes-button").onclick = () => {
-    alert('選択されました: ' + restaurantData.name);
+    /**
+    * 指定したURLを新しいタブで開く
+    * @param {string} url - 表示するURL
+    */
+    function openInNewTab(url) {
+      if (url) {
+        window.open(url, '_blank');
+      } else {
+        console.error('URLが指定されていません');
+      }
+    }
+    
+    openInNewTab(restaurantData.url)
     }
 
     document.getElementById("no-button").onclick = () => {
