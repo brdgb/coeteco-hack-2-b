@@ -226,18 +226,16 @@ window.onload = () => {
 function showRestaurant(restaurantData) {
   document.getElementById("restaurantImage").src = restaurantData.image_url;
   document.getElementById("restaurantName").textContent = restaurantData.name;
-  document.getElementById("restaurantGenre").textContent =
-    "ジャンル: " + restaurantData.genre;
+  document.getElementById("restaurantGenre").textContent = restaurantData.genre;
   document.getElementById("restaurantBudget").textContent =
-    "予算: " + restaurantData.budget;
+    restaurantData.budget;
   document.getElementById("restaurantDistance").textContent =
-    "距離: " + restaurantData.distance + "m";
+    restaurantData.distance + "m";
   document.getElementById("restaurantCongestion").textContent =
-    "混雑率: " + restaurantData.congestion;
-  document.getElementById("restaurantStar").textContent =
-    "満足度: " + restaurantData.star;
+    restaurantData.congestion;
+  document.getElementById("restaurantStar").textContent = restaurantData.star;
   document.getElementById("restaurantRecommendReason").textContent =
-    "AI押しポイント:" + restaurantData.recommend_reason;
+    restaurantData.recommend_reason;
 
   document.getElementById("yes-button").onclick = () => {
     /**
