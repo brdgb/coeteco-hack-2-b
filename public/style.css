@@ -13,11 +13,11 @@ svg{
 }
 #restaurantImage {
   width: 100%;
-  border-radius: 5px;
+  border-radius: 20px;
 }
 .table_index{
-  background-color: gainsboro;
-  text-align: center;
+  background-color: #FFCDD2;
+  text-align: left;
   padding: 0 5px;
 }
 .table_index svg{
@@ -39,4 +39,22 @@ svg{
 }
 .footer{
   height: 50px;
+}
+
+svg {
+  font-size: 20px;
+  color: #FFFFFF;
+  margin-right: 8px;
+}
+
+button {
+  background-color: #D32F2F; /* 濃い赤 */
+  color: #FFFFFF; /* 白 */
+  padding: 10px 20px;
+  border-radius: 5px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  transition: background-color 0.3s ease;
+}
+button:hover {
+  background-color: #B71C1C; /* より濃い赤 */
 }
