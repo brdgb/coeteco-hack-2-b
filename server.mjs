@@ -76,11 +76,11 @@ async function summarizeWebPage(url) {
   });
 
   const retrievedDocs = await retriever.invoke(
-    "この店の特徴について日本語で30文字で答えてください。タブ文字や改行文字は含めないでください",
+    "この店の特徴について日本語で50文字で答えてください。タブ文字や改行文字は含めないでください",
   );
   const result = await ragChain.invoke({
     question:
-      "この店の特徴について日本語で30文字で答えてください。タブ文字や改行文字は含めないでください",
+      "この店の特徴について日本語で50文字で答えてください。タブ文字や改行文字は含めないでください",
     context: retrievedDocs,
   });
   return result;
@@ -99,99 +99,53 @@ function createState() {
 }
 const state = createState();
 
-// toolを定義
-const restaurantTool = tool(
-  async ({ genre1, genre2 }) => {
-    const genreCode1 = genre1 === "" ? "" : GENRE_LIST[genre1];
-    const genreCode2 = genre2 === "" ? "" : GENRE_LIST[genre2];
-    const genreCode =
-      genreCode1 === ""
-        ? genreCode2 === ""
-          ? ""
-          : genreCode2
-        : genreCode2 === ""
-        ? genreCode1
-        : `${genreCode2},${genreCode2}`;
-    const currentState = state.getState();
-    // 飲食店情報を取得
-    const restaurant = await fetch(
-      `http://webservice.recruit.co.jp/hotpepper/gourmet/v1/?key=${process.env.HOTPEPPER_API_KEY}&lat=${currentState.latitude}&lng=${currentState.longitude}&count=${COUNT}&budget=${BUDGET_CODE}&genre=${genreCode}&format=json`,
-    );
-    // jsonにする
-    const restaurantJson = await restaurant.json();
-    // 店の情報のみを取り出す
-    const restaurantArray = restaurantJson.results.shop;
-    // 使う情報を取り出す
-    const restaurantFeatures = restaurantArray.map((arr) => {
-      return summarizeWebPage(arr.urls.pc);
-    });
-    const restaurantTexts = await Promise.all(restaurantFeatures).then((values) => {
-      const restaurantText = restaurantArray.map((arr, i) => {
-        let resultText = "";
+async function getRestaurant() {
+  const currentState = state.getState();
+  // 飲食店情報を取得
+  const restaurant = await fetch(
+    `http://webservice.recruit.co.jp/hotpepper/gourmet/v1/?key=${process.env.HOTPEPPER_API_KEY}&lat=${currentState.latitude}&lng=${currentState.longitude}&count=${COUNT}&budget=${BUDGET_CODE}&format=json`,
+  );
+  // jsonにする
+  const restaurantJson = await restaurant.json();
+  // 店の情報のみを取り出す
+  const restaurantArray = restaurantJson.results.shop;
+  // 使う情報を取り出す
+  const restaurantFeatures = restaurantArray.map((arr) => {
+    return summarizeWebPage(arr.urls.pc);
+  });
+  const restaurants = await Promise.all(restaurantFeatures).then(
+    (values) => {
+      const restaurantResults = restaurantArray.map((arr, i) => {
+        const result = {};
         // COLUMNSにあるカラム名を追加
         for (const columnName of COLUMNS) {
-          resultText += `${columnName}: ${arr[`${columnName}`]}, `;
+          result[`${columnName}`]= arr[`${columnName}`];
         }
         // その他を手動で追加
-        resultText += `genre_name: ${arr.genre.name}`;
-        resultText += `photo: ${arr.photo.pc.m}`;
-        resultText += `budget: ${arr.budget.name}`;
-        resultText += `url: ${arr.urls.pc}`;
-        resultText += `feature: ${values[i]}`;
+        result["genre_name"]= arr.genre.name;
+        result["photo"]= arr.photo.pc.m;
+        result["budget"]= arr.budget.name;
+        result["url"]= arr.urls.pc;
+        result["feature"]= values[i];
 
-        return resultText;
+        return result;
       });
-      // console.log(restaurantText);
-      return restaurantText;
-    });
-    return restaurantTexts.join(',')
+      return restaurantResults;
+    },
+  );
+  return restaurants;
+}
+
+// toolを定義
+const restaurantTool = tool(
+  async () => {
+    const restaurants = await getRestaurant();
+    console.log(restaurants)
+    return "おいしいごはん屋さん";
   },
   {
     name: "getRestaurant",
-    schema: z.object({
-      genre1: z.enum([
-        "居酒屋",
-        "ダイニングバー_バル",
-        "創作料理",
-        "和食",
-        "洋食",
-        "イタリアン_フレンチ",
-        "中華",
-        "焼肉_ホルモン",
-        "韓国料理",
-        "アジア・エスニック料理",
-        "各国料理",
-        "カラオケ_パーティ",
-        "バー_カクテル",
-        "ラーメン",
-        "お好み焼き_もんじゃ",
-        "カフェ_スイーツ",
-        "その他グルメ",
-        "",
-      ]),
-      genre2: z.enum([
-        "居酒屋",
-        "ダイニングバー_バル",
-        "創作料理",
-        "和食",
-        "洋食",
-        "イタリアン_フレンチ",
-        "中華",
-        "焼肉_ホルモン",
-        "韓国料理",
-        "アジア・エスニック料理",
-        "各国料理",
-        "カラオケ_パーティ",
-        "バー_カクテル",
-        "ラーメン",
-        "お好み焼き_もんじゃ",
-        "カフェ_スイーツ",
-        "その他グルメ",
-        "",
-      ]),
-    }),
-    description:
-      "ユーザーの周辺の飲食店を取得します。飲食店のジャンルが明確であれば、引数に飲食店のジャンルを2つまで入れてください。明確でない場合は必ず空文字列としてください。ジャンルは居酒屋,ダイニングバー_バル,創作料理,和食,洋食,イタリアン_フレンチ,中華,焼肉_ホルモン,韓国料理,アジア・エスニック料理,各国料理,カラオケ_パーティ,バー_カクテル,ラーメン,お好み焼き_もんじゃ,カフェ_スイーツ,その他グルメの中から選んでください。",
+    description: "ユーザーの周辺の飲食店を取得します。",
   },
 );
 
@@ -245,7 +199,6 @@ app.post("/chat", async (request, response) => {
       const toolMessage = await selectedTool.invoke(toolCall);
       // 実行結果をmessagesにのせる
       messages.push(toolMessage);
-      console.log(messages);
     }
     // 関数の実行結果をもとに最終的な返答を得る
     const aiMessageChunkAfterToolCall = await chatModelWithTools.invoke(
@@ -255,6 +208,7 @@ app.post("/chat", async (request, response) => {
   }
   // debug
   // console.log(state.getState());
+  // console.log(messages);
   response.json({ content: messages[messages.length - 1].content });
 });
 
