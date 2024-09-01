@@ -8,32 +8,6 @@
   </head>
   <body>
     <h1>迷わない食堂</h1>
-    <ul id="chat-messages">
-      <!-- template 要素は JavaScript を通して操作する。 -->
-      <!-- 画面には表示されないため、どこに配置してもよい。 -->
-      <template id="chat-message-template">
-        <li class="chat-message">
-          <div class="chat-message__author"></div>
-          <div class="chat-message__content"></div>
-          <button class="chat-message__delete-button" type="button">
-            削除
-          </button>
-        </li>
-      </template>
-    </ul>
-    <!-- <form id="input-form">
-      <input id="prompt-text-input" />
-      <button id='start-recognition-button'>音声入力</button>
-      <button type="submit">送信</button>
-    </form> -->
-    <div id="location-information">現在位置が不明です。</div>
-    <ul id="restaurant-cards">
-      <template id="restaurant-card-template">
-        <div class="restaurant-name"></div>
-        <div class="restaurant-genre"></div>
-        <img class="restaurant-photo"/>
-      </template>
-    </ul>
       <dialog id="restaurantDialog">
         <span class="close" id="closeDialog">&times;</span>
         <img id="restaurantImage" src="" alt="Restaurant Image">
